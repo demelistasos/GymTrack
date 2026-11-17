@@ -1,0 +1,14 @@
+node_modules/
+dist/
+*.log
+
+# Τα προσωπικά δεδομένα ΔΕΝ ανεβαίνουν ποτέ στο GitHub
+*.xls
+*.xlsx
+gymtrack-data*.json
+GymTrack-*.json
+*.csv
+tests/node_modules
+tests/package.json
+tests/package-lock.json
+tests/shots
