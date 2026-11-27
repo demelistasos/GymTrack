@@ -12,13 +12,18 @@ const PAGES = [
 let route = 'today';
 
 function go(p) { route = p; render(); const m = $('.main'); if (m) m.scrollTop = 0; }
-function applyTheme() { document.documentElement.dataset.theme = DB.settings.theme === 'light' ? 'light' : 'dark'; }
+function applyTheme() {
+  const light = DB.settings.theme === 'light';
+  document.documentElement.dataset.theme = light ? 'light' : 'dark';
+  const m = document.querySelector('meta[name="theme-color"]'); if (m) m.content = light ? '#F3F4F0' : '#0C0E11';
+}
 function renderNav() {
   $('#nav').innerHTML = PAGES.map(([k, l]) => `<button class="${route === k ? 'on' : ''} ${k === 'settings' ? 'nav-settings' : ''}" data-page="${k}" data-action="go" aria-label="${l}">
     ${icon(k)}<span>${l}</span>${k === 'workout' && DB.active ? '<i class="nav-dot"></i>' : ''}</button>`).join('');
 }
 function render() {
   if (!DB) return;
+  keepAwake();
   applyTheme(); renderNav();
   const pg = PAGES.find(p => p[0] === route) || PAGES[0];
   // κρατάμε τη θέση του scroll όταν ξανασχεδιάζεται η ίδια σελίδα
@@ -85,6 +90,9 @@ const actions = {
   'backup-choose': async el => { const r = await window.gymtrack.backupChoose(el.dataset.k); backupInfo = r.status; render(); if (r.ok) toast(`${icon('check')} Το αντίγραφο έγινε`); else if (r.error) toast(esc(r.error), 'bad'); },
   'backup-now': async el => { const r = await window.gymtrack.backupNow(el.dataset.k); backupInfo = r.status; render(); toast(r.ok ? `${icon('check')} Το αντίγραφο έγινε` : esc(r.error), r.ok ? '' : 'bad'); },
   'backup-remove': async el => { backupInfo = await window.gymtrack.backupRemove(el.dataset.k); render(); },
+  'web-export': () => webExport(),
+  'web-import': () => webImport(),
+  'web-reload': () => { persist().then(() => location.reload()); },
   'update-check': () => window.gymtrack.checkUpdates(),
   'update-log': () => window.gymtrack.openUpdateLog(),
   'update-now': () => askUpdate(),
@@ -147,4 +155,5 @@ document.addEventListener('keydown', e => {
   render();
   setInterval(tick, 1000);
   checkJustUpdated();
+  setupWeb();
 })();

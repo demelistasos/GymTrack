@@ -43,8 +43,9 @@ async function shot(page, name) { if (SHOTS) await page.screenshot({ path: path.
     await page.reload(); await wait(page, 300);
     const s = `${w}-${theme}`;
     check(await page.$eval('#page', e => e.innerText.length > 50), `${tag}: η αρχική φορτώνει`);
+    check(await page.$('.setup.soft [data-action="web-export"]') !== null, `${tag}: θυμίζει αντίγραφο ασφαλείας`);
     check(await page.evaluate(() => document.documentElement.dataset.theme) === theme, `${tag}: σωστή εμφάνιση`);
-    check(!(await page.$('.setup')), `${tag}: με προφίλ δεν ζητάει στόχους`);
+    check(!(await page.$('.setup:not(.soft)')), `${tag}: με προφίλ δεν ζητάει στόχους`);
     await shot(page, `${s}-1-today`);
     const pages = await page.$$eval('#nav button', bs => bs.map(b => b.dataset.page));
     check(pages.length === 6, `${tag}: το μενού έχει 6 σελίδες`);
@@ -122,6 +123,13 @@ async function shot(page, name) { if (SHOTS) await page.screenshot({ path: path.
     await shot(page, `${s}-5-profile`);
     await page.click('form[data-form="profile"] button.primary'); await wait(page);
     check(await page.evaluate(() => DB.profile.goal === 'keep'), `${tag}: αποθηκεύτηκε το προφίλ`);
+    // έκδοση για κινητό: αντίγραφο ασφαλείας και λειτουργία χωρίς internet
+    check(await page.$('[data-action="web-export"]') !== null && await page.$('[data-action="web-import"]') !== null, `${tag}: κουμπιά για αντίγραφο στο κινητό`);
+    check(await page.evaluate(() => navigator.serviceWorker.getRegistration().then(r => !!r)), `${tag}: ενεργή η λειτουργία χωρίς internet`);
+    const [dl] = await Promise.all([page.waitForEvent('download', { timeout: 3000 }).catch(() => null), page.click('[data-action="web-export"]')]);
+    check(dl && /GymTrack-\d{4}-\d{2}-\d{2}\.json/.test(dl.suggestedFilename()), `${tag}: κατεβαίνει το αντίγραφο`);
+    await wait(page);
+    check(await page.evaluate(() => DB.settings.lastBackup === today()), `${tag}: θυμάται πότε έγινε το αντίγραφο`);
     // αλλαγή εμφάνισης
     await page.click(`[data-action="theme"][data-v="${theme === 'dark' ? 'light' : 'dark'}"]`); await wait(page);
     check(await page.evaluate(t => document.documentElement.dataset.theme !== t, theme), `${tag}: αλλάζει η εμφάνιση`);
@@ -139,13 +147,14 @@ async function shot(page, name) { if (SHOTS) await page.screenshot({ path: path.
     const errors = [];
     page.on('pageerror', e => errors.push(e.message));
     await page.goto(url); await page.evaluate(() => localStorage.clear()); await page.reload(); await wait(page, 300);
-    check(await page.$('.setup') !== null, `${tag}: ζητάει τα στοιχεία για τους στόχους`);
+    check(await page.$('.setup:not(.soft)') !== null, `${tag}: ζητάει τα στοιχεία για τους στόχους`);
+    check(await page.$('[data-action="web-export"]') === null, `${tag}: χωρίς δεδομένα δεν ζητάει αντίγραφο`);
     await shot(page, 'first-1-today');
     for (const pg of ['workout', 'food', 'progress', 'shop', 'settings', 'today']) { await page.click(`#nav button[data-page="${pg}"]`); await wait(page); }
     await page.click('.setup [data-action="profile-setup"]'); await wait(page);
     await page.fill('input[name="height"]', '178'); await page.fill('input[name="weight"]', '84');
     await page.click('form[data-form="profile"] button.primary'); await wait(page);
-    check(await page.$('.setup') === null && await page.evaluate(() => targets().kcal === 2440), `${tag}: μετά το προφίλ βγαίνουν οι στόχοι`);
+    check(await page.$('.setup:not(.soft)') === null && await page.evaluate(() => targets().kcal === 2440), `${tag}: μετά το προφίλ βγαίνουν οι στόχοι`);
     await page.click('#nav button[data-page="workout"]'); await wait(page);
     await page.click('[data-action="workout-start"]'); await wait(page);
     await page.click('[data-action="workout-finish"]'); await wait(page);

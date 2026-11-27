@@ -74,6 +74,11 @@ function save() { clearTimeout(saveTimer); saveTimer = setTimeout(persist, 300);
 function persist() {
   clearTimeout(saveTimer); saveTimer = null;
   const text = JSON.stringify(DB, null, 1);
+  // στο κινητό η αποθήκευση γίνεται αμέσως (το iPhone μπορεί να «παγώσει» τη σελίδα μόλις φύγεις)
+  if (!isApp()) {
+    try { localStorage.setItem(LS_KEY, text); } catch { toast('Δεν χωράει άλλο στη μνήμη του browser. Κάνε αντίγραφο από τις Ρυθμίσεις.', 'bad'); }
+    return Promise.resolve();
+  }
   saving = saving.then(async () => {
     if (isApp()) { const r = await window.gymtrack.save(text); if (!r || !r.ok) toast('Δεν αποθηκεύτηκε. Δοκιμάζω ξανά…', 'bad'); }
     else { try { localStorage.setItem(LS_KEY, text); } catch { /* ο browser δεν επιτρέπει αποθήκευση */ } }
@@ -81,6 +86,8 @@ function persist() {
   return saving;
 }
 window.addEventListener('beforeunload', () => { if (saveTimer) persist(); });
+window.addEventListener('pagehide', () => { if (saveTimer) persist(); });
+document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden' && saveTimer) persist(); });
 
 // ---------- υπολογισμοί διατροφής ----------
 function latestBody() { return [...DB.body].sort((a, b) => a.date.localeCompare(b.date)).filter(b => b.weight).pop() || null; }

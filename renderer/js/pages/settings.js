@@ -36,10 +36,12 @@ function pageSettings() {
           <div class="row gap wrap"><button class="btn small ghost" data-action="data-folder">${icon('folder')} Άνοιγμα φακέλου</button><button class="btn small ghost" data-action="data-move">Αλλαγή φακέλου</button>
           <button class="btn small ghost" data-action="data-export">Αντίγραφο σε αρχείο</button><button class="btn small ghost" data-action="data-import">Άνοιγμα αρχείου</button></div>
           ${bk('cloud', 'Αντίγραφο σε OneDrive / Google Drive')}${bk('usb', 'Αντίγραφο σε USB')}`
-        : '<p class="muted small">Στον browser τα δεδομένα μένουν μόνο σε αυτόν τον browser.</p>'}
+        : `<p class="muted small">Στο κινητό τα δεδομένα κρατιούνται <b>μόνο σε αυτό το κινητό</b>. Κάνε αντίγραφο μία φορά την εβδομάδα και αποθήκευσέ το στα Αρχεία (iCloud) ή στείλ' το στον εαυτό σου.</p>
+          <p class="small">Τελευταίο αντίγραφο: <b>${DB.settings.lastBackup ? esc(shortDate(DB.settings.lastBackup)) : 'κανένα ακόμα'}</b></p>
+          <div class="row gap wrap"><button class="btn small primary" data-action="web-export">Αντίγραφο τώρα</button><button class="btn small ghost" data-action="web-import">Επαναφορά από αντίγραφο</button></div>`}
       </div>
       <div class="card"><h3>Έκδοση</h3>
-        <p><b>GymTrack ${esc(appInfo ? appInfo.version : '')}</b></p>
+        <p><b>GymTrack ${esc(appInfo ? appInfo.version : isWeb() ? webVersion() : '')}</b>${isWeb() ? ` <span class="muted small">· για κινητό${isStandalone() ? '' : ' (στον browser)'}</span>` : ''}</p>
         <p class="muted small" id="upd-msg"></p>
         ${isApp() ? '<div class="row gap wrap"><button class="btn small ghost" data-action="update-check">Έλεγχος για νέα έκδοση</button><button class="btn small ghost" data-action="update-log">Ημερολόγιο ενημερώσεων</button></div>' : ''}
       </div>

@@ -91,7 +91,8 @@ function pageToday() {
     <div class="grid today-grid">
       <div class="col">${workoutCard}${week}</div>
       <div class="col">${nutrition}${waterCard}${bodyCard}</div>
-    </div>`;
+    </div>
+    ${backupDue() ? `<div class="card setup soft"><div class="setup-ic">${icon('folder')}</div><div><h3>Ώρα για αντίγραφο ασφαλείας</h3><p class="muted">Τα δεδομένα σου είναι μόνο σε αυτό το κινητό. Κράτα ένα αντίγραφο στα Αρχεία (iCloud).</p></div><button class="btn primary" data-action="web-export">Αντίγραφο</button></div>` : ''}`;
 }
 
 function bodyDelta() {

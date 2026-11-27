@@ -12,7 +12,7 @@ async function t(name, fn) {
 }
 // φορτώνει τα αρχεία της οθόνης που δεν χρειάζονται browser
 function loadCore() {
-  const ctx = { console, window: {}, document: { querySelector: () => null }, localStorage: { getItem: () => null, setItem() {} } };
+  const ctx = { console, window: {}, document: { querySelector: () => null, addEventListener() {} }, localStorage: { getItem: () => null, setItem() {} } };
   ctx.window.addEventListener = () => {}; ctx.addEventListener = () => {};
   vm.createContext(ctx);
   const src = ['defaults.js', 'core.js'].map(f => fs.readFileSync(path.join(__dirname, '..', 'renderer', 'js', f), 'utf8').replace(/^'use strict';/, '')).join('\n');

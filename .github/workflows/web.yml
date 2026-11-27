@@ -1,0 +1,59 @@
+name: Έκδοση για κινητό (GitHub Pages)
+
+# Σε κάθε αλλαγή στην εμφάνιση/λειτουργία (φάκελος renderer) η έκδοση για κινητό
+# δημοσιεύεται στο https://demelistasos.github.io/GymTrack/ — μόνο αν περάσουν οι δοκιμές.
+# Τα αρχεία μπαίνουν στο branch «gh-pages», από όπου τα σερβίρει το GitHub Pages.
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'renderer/**'
+      - 'tests/**'
+      - '.github/workflows/web.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Εγκατάσταση εργαλείων δοκιμής
+        run: |
+          cd tests
+          npm init -y > /dev/null
+          npm install --no-audit --no-fund playwright@1
+          npx playwright install --with-deps chromium
+      - name: Μικρές δοκιμές
+        run: node tests/unit.test.js
+      - name: Δοκιμή οθόνης
+        run: node tests/ui.test.js
+
+  deploy:
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Ετοιμασία αρχείων με αριθμό έκδοσης
+        run: |
+          mkdir site && cp -r renderer/. site/ && touch site/.nojekyll
+          sed -i "s|__VERSION__|${{ github.run_number }} · $(TZ=Europe/Athens date +%d/%m/%Y)|" site/js/web.js
+          sed -i "s|__CACHE__|${{ github.run_number }}-${GITHUB_SHA::7}|" site/sw.js
+          grep -n "WEB_VERSION =" site/js/web.js
+      - name: Δημοσίευση στο gh-pages
+        run: |
+          cd site
+          git init -q -b gh-pages
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A && git commit -q -m "Έκδοση για κινητό ${{ github.run_number }} (${GITHUB_SHA::7})"
+          git push -f "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git" gh-pages
