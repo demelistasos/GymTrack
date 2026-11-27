@@ -355,6 +355,7 @@ details[open] summary { margin-bottom: 12px; color: var(--text); }
 .danger-zone { border-color: var(--warn-soft); }
 
 /* ---------- 5. μικρές οθόνες ---------- */
+
 @media (max-width: 1100px) {
   .today-grid, .food-grid { grid-template-columns: 1fr; }
 }
@@ -398,8 +399,6 @@ details[open] summary { margin-bottom: 12px; color: var(--text); }
   .picker .chips, .picker .seg:not(.small) { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; }
   .picker .chips::-webkit-scrollbar, .picker .seg::-webkit-scrollbar { display: none; }
   .picker .chip, .picker .seg:not(.small) button { flex: none; }
-  html.ios-full, html.ios-full body { height: var(--app-h); overflow: hidden; background: var(--surface); }
-  html.ios-full .app { position: absolute; top: 0; left: 0; right: 0; bottom: auto; height: var(--app-h); }
   .glasses { gap: 6px; } .glass { width: 30px; height: 40px; }
   .setup.soft { flex-direction: row; align-items: center; flex-wrap: wrap; }
   .setup.soft > div:nth-child(2) { flex-basis: calc(100% - 64px); }
@@ -413,4 +412,11 @@ details[open] summary { margin-bottom: 12px; color: var(--text); }
   .ex-actions .icon-btn { width: 34px; height: 34px; }
   .add-bar { flex-wrap: wrap; }
   .add-bar input { flex-basis: 100%; }
+}
+
+/* iPhone, εφαρμογή από την αρχική οθόνη: το «100%» του Safari αφήνει απ' έξω τη λωρίδα της κάτω γραμμής
+   (το ύψος βγαίνει μικρότερο κατά το πάνω περιθώριο). Το 100vh εκεί είναι όλη η οθόνη, οπότε το χρησιμοποιούμε. */
+@media (display-mode: standalone) and (max-width: 640px) {
+  html, body { height: 100vh; overflow: hidden; background: var(--surface); }
+  .app { position: absolute; top: 0; left: 0; right: 0; bottom: auto; height: 100vh; }
 }

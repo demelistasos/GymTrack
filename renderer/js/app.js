@@ -21,25 +21,16 @@ function renderNav() {
   $('#nav').innerHTML = PAGES.map(([k, l]) => `<button class="${route === k ? 'on' : ''} ${k === 'settings' ? 'nav-settings' : ''}" data-page="${k}" data-action="go" aria-label="${l}">
     ${icon(k)}<span>${l}</span>${k === 'workout' && DB.active ? '<i class="nav-dot"></i>' : ''}</button>`).join('');
 }
-// Κινητό: πιάνουμε όλη την οθόνη και μετράμε πού είναι το κάτω μενού.
-// Στο iPhone (iOS 26), όταν η εφαρμογή ανοίγει από την αρχική οθόνη, ο browser δίνει στη σελίδα
-// λιγότερο ύψος από την οθόνη και αφήνει μια μαύρη λωρίδα κάτω. Τότε απλώνουμε την εφαρμογή
-// μόνοι μας σε όλο το ύψος της οθόνης, ώστε το μενού να φτάνει ως κάτω, όπως στις κανονικές εφαρμογές.
+// Κινητό: μετράμε πού είναι το κάτω μενού, για να μπαίνουν από πάνω του το χρονόμετρο ξεκούρασης και τα μηνύματα.
 function measureNav() {
-  const s = $('.side'), root = document.documentElement; if (!s) return;
+  const s = $('.side'); if (!s) return;
   const mobile = innerWidth <= 640;
-  const portrait = innerHeight > innerWidth;
-  const short = mobile && portrait && typeof isStandalone === 'function' && isStandalone() ? screen.height - innerHeight : 0;
-  const fix = short > 8 && short < 160;
-  root.classList.toggle('ios-full', fix);
-  if (fix) root.style.setProperty('--app-h', screen.height + 'px');
-  // πόσο χώρο πιάνει το μενού από το κάτω μέρος της ορατής περιοχής (για το χρονόμετρο ξεκούρασης και τα μηνύματα)
   const navTop = s.getBoundingClientRect().top;
-  root.style.setProperty('--nav-h', mobile ? Math.max(0, innerHeight - navTop) + 'px' : '0px');
+  document.documentElement.style.setProperty('--nav-h', mobile ? Math.max(0, innerHeight - navTop) + 'px' : '0px');
 }
 window.addEventListener('resize', measureNav);
 // η ίδια η σελίδα δεν κυλάει ποτέ (κυλάει μόνο το περιεχόμενο), αλλιώς στο iPhone «ανεβαίνει» το μενού
-window.addEventListener('scroll', () => { if (document.documentElement.classList.contains('ios-full') && (scrollY || scrollX)) scrollTo(0, 0); }, { passive: true });
+window.addEventListener('scroll', () => { if (typeof isStandalone === 'function' && isStandalone() && (scrollY || scrollX)) scrollTo(0, 0); }, { passive: true });
 window.addEventListener('orientationchange', () => setTimeout(measureNav, 300));
 function render() {
   if (!DB) return;
