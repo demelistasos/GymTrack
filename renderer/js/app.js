@@ -21,18 +21,25 @@ function renderNav() {
   $('#nav').innerHTML = PAGES.map(([k, l]) => `<button class="${route === k ? 'on' : ''} ${k === 'settings' ? 'nav-settings' : ''}" data-page="${k}" data-action="go" aria-label="${l}">
     ${icon(k)}<span>${l}</span>${k === 'workout' && DB.active ? '<i class="nav-dot"></i>' : ''}</button>`).join('');
 }
-// το ύψος του κάτω μενού στο κινητό (μαζί με το κενό του iPhone από κάτω)
+// Κινητό: πιάνουμε όλη την οθόνη και μετράμε πού είναι το κάτω μενού.
+// Στο iPhone (iOS 26), όταν η εφαρμογή ανοίγει από την αρχική οθόνη, ο browser δίνει στη σελίδα
+// λιγότερο ύψος από την οθόνη και αφήνει μια μαύρη λωρίδα κάτω. Τότε απλώνουμε την εφαρμογή
+// μόνοι μας σε όλο το ύψος της οθόνης, ώστε το μενού να φτάνει ως κάτω, όπως στις κανονικές εφαρμογές.
 function measureNav() {
-  const s = $('.side'); if (!s) return;
-  const mobile = getComputedStyle($('.app')).gridTemplateRows.split(' ').length > 1 && innerWidth <= 640;
-  // Σε κάποιες εκδόσεις του iPhone, η εφαρμογή από την αρχική οθόνη δεν φτάνει ως κάτω:
-  // το iPhone κρατάει μόνο του μια λωρίδα για τη γραμμή «αρχικής». Τότε τη βάφουμε στο χρώμα του μενού
-  // και δεν αφήνουμε δεύτερο κενό μέσα στο μενού.
-  const gap = mobile && typeof isStandalone === 'function' && isStandalone() && innerHeight > innerWidth ? screen.height - innerHeight : 0;
-  document.documentElement.classList.toggle('ios-gap', gap > 8 && gap < 120);
-  document.documentElement.style.setProperty('--nav-h', mobile ? s.offsetHeight + 'px' : '0px');
+  const s = $('.side'), root = document.documentElement; if (!s) return;
+  const mobile = innerWidth <= 640;
+  const portrait = innerHeight > innerWidth;
+  const short = mobile && portrait && typeof isStandalone === 'function' && isStandalone() ? screen.height - innerHeight : 0;
+  const fix = short > 8 && short < 160;
+  root.classList.toggle('ios-full', fix);
+  if (fix) root.style.setProperty('--app-h', screen.height + 'px');
+  // πόσο χώρο πιάνει το μενού από το κάτω μέρος της ορατής περιοχής (για το χρονόμετρο ξεκούρασης και τα μηνύματα)
+  const navTop = s.getBoundingClientRect().top;
+  root.style.setProperty('--nav-h', mobile ? Math.max(0, innerHeight - navTop) + 'px' : '0px');
 }
 window.addEventListener('resize', measureNav);
+// η ίδια η σελίδα δεν κυλάει ποτέ (κυλάει μόνο το περιεχόμενο), αλλιώς στο iPhone «ανεβαίνει» το μενού
+window.addEventListener('scroll', () => { if (document.documentElement.classList.contains('ios-full') && (scrollY || scrollX)) scrollTo(0, 0); }, { passive: true });
 window.addEventListener('orientationchange', () => setTimeout(measureNav, 300));
 function render() {
   if (!DB) return;
