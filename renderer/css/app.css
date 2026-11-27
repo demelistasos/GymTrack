@@ -268,8 +268,8 @@ details[open] summary { margin-bottom: 12px; color: var(--text); }
 .check-btn .ic { stroke-width: 3; }
 .check-btn:hover { border-color: var(--accent); color: var(--muted); }
 .check-btn.on { background: var(--accent); border-color: var(--accent); color: var(--on-accent); }
-.rest { position: fixed; bottom: 24px; left: calc(50% + 116px); transform: translate(-50%, 120px); background: var(--surface-3); border: 1px solid var(--line); border-radius: 20px; padding: 10px 12px 10px 10px; display: flex; align-items: center; gap: 12px; box-shadow: 0 16px 40px rgba(0, 0, 0, .35); z-index: 40; transition: transform .3s cubic-bezier(.2, .8, .2, 1); }
-.rest.show { transform: translate(-50%, 0); }
+.rest { position: fixed; bottom: 24px; left: calc(50% + 116px); transform: translate(-50%, 120px); background: var(--surface-3); border: 1px solid var(--line); border-radius: 20px; padding: 10px 12px 10px 10px; display: flex; align-items: center; gap: 12px; box-shadow: 0 16px 40px rgba(0, 0, 0, .35); z-index: 40; opacity: 0; pointer-events: none; transition: transform .3s cubic-bezier(.2, .8, .2, 1), opacity .2s; }
+.rest.show { transform: translate(-50%, 0); opacity: 1; pointer-events: auto; }
 .rest > div:nth-child(2) { display: flex; flex-direction: column; min-width: 70px; }
 .rest b { font-size: 24px; font-weight: 800; font-variant-numeric: tabular-nums; line-height: 1.1; }
 .rest-ring { width: 44px; height: 44px; border-radius: 50%; background: conic-gradient(var(--accent) calc(var(--f) * 360deg), var(--track) 0); -webkit-mask: radial-gradient(circle, transparent 15px, #000 16px); mask: radial-gradient(circle, transparent 15px, #000 16px); }
@@ -370,14 +370,15 @@ details[open] summary { margin-bottom: 12px; color: var(--text); }
 }
 @media (max-width: 640px) {
   body { font-size: 14.5px; }
-  .app { grid-template-columns: 1fr; grid-template-rows: 1fr auto; }
+  /* στο iPhone (εφαρμογή από την αρχική οθόνη) το 100vh δεν πιάνει όλη την οθόνη: η εφαρμογή «κολλάει» στις άκρες */
+  .app { grid-template-columns: 1fr; grid-template-rows: minmax(0, 1fr) auto; position: fixed; inset: 0; height: auto; }
   .side { order: 2; flex-direction: row; padding: 6px max(8px, env(safe-area-inset-right)) calc(6px + env(safe-area-inset-bottom)) max(8px, env(safe-area-inset-left)); border-right: 0; border-top: 1px solid var(--line); }
   .brand { display: none; }
   #nav { flex-direction: row; justify-content: space-around; }
   #nav button { flex-direction: column; gap: 3px; padding: 7px 4px; flex: 1; }
   #nav button span { display: block; font-size: 10.5px; }
   #nav .nav-settings { margin-top: 0; }
-  .page { padding: calc(16px + env(safe-area-inset-top)) max(16px, env(safe-area-inset-right)) 90px max(16px, env(safe-area-inset-left)); }
+  .page { padding: calc(16px + env(safe-area-inset-top)) max(16px, env(safe-area-inset-right)) 110px max(16px, env(safe-area-inset-left)); }
   .update-banner:not(.hidden) + .page { padding-top: 16px; }
   .update-banner:not(.hidden) { margin-top: calc(12px + env(safe-area-inset-top)); }
   /* στο iPhone, πεδία κάτω από 16px κάνουν «ζουμ» όταν τα πατάς */
@@ -389,8 +390,9 @@ details[open] summary { margin-bottom: 12px; color: var(--text); }
   .sheet, .sheet.wide { max-width: none; border-radius: 22px 22px 0 0; max-height: calc(100dvh - 24px - env(safe-area-inset-top)); border-bottom: 0; }
   .sheet-body { padding-bottom: calc(20px + env(safe-area-inset-bottom)); }
   .pick-list { max-height: none; }
-  .toast { bottom: calc(82px + env(safe-area-inset-bottom)); }
-  .rest { bottom: calc(82px + env(safe-area-inset-bottom)); }
+  /* --nav-h: το πραγματικό ύψος του κάτω μενού (το μετράει η εφαρμογή), ώστε να μην το κρύβουν */
+  .toast { bottom: calc(var(--nav-h, 90px) + 12px); }
+  .rest { bottom: calc(var(--nav-h, 90px) + 10px); transform: translate(-50%, 16px); }
   .page-head .btn.primary { width: 100%; }
   .tabs { align-self: stretch; } .tab { flex: 1; }
   .picker .chips, .picker .seg:not(.small) { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; }

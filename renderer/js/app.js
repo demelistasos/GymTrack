@@ -21,6 +21,14 @@ function renderNav() {
   $('#nav').innerHTML = PAGES.map(([k, l]) => `<button class="${route === k ? 'on' : ''} ${k === 'settings' ? 'nav-settings' : ''}" data-page="${k}" data-action="go" aria-label="${l}">
     ${icon(k)}<span>${l}</span>${k === 'workout' && DB.active ? '<i class="nav-dot"></i>' : ''}</button>`).join('');
 }
+// το ύψος του κάτω μενού στο κινητό (μαζί με το κενό του iPhone από κάτω)
+function measureNav() {
+  const s = $('.side'); if (!s) return;
+  const mobile = getComputedStyle($('.app')).gridTemplateRows.split(' ').length > 1 && innerWidth <= 640;
+  document.documentElement.style.setProperty('--nav-h', mobile ? s.offsetHeight + 'px' : '0px');
+}
+window.addEventListener('resize', measureNav);
+window.addEventListener('orientationchange', () => setTimeout(measureNav, 300));
 function render() {
   if (!DB) return;
   keepAwake();
@@ -30,6 +38,7 @@ function render() {
   const main = $('.main'), st = main.dataset.route === route ? main.scrollTop : 0;
   $('#page').innerHTML = pg[2]();
   main.dataset.route = route; main.scrollTop = st;
+  measureNav();
 }
 
 // ---------- κουμπιά ----------
