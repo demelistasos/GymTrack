@@ -44,6 +44,7 @@ function pageSettings() {
         <p><b>GymTrack ${esc(appInfo ? appInfo.version : isWeb() ? webVersion() : '')}</b>${isWeb() ? ` <span class="muted small">· για κινητό${isStandalone() ? '' : ' (στον browser)'}</span>` : ''}</p>
         <p class="muted small" id="upd-msg"></p>
         ${isApp() ? '<div class="row gap wrap"><button class="btn small ghost" data-action="update-check">Έλεγχος για νέα έκδοση</button><button class="btn small ghost" data-action="update-log">Ημερολόγιο ενημερώσεων</button></div>' : ''}
+        ${isWeb() ? '<div class="row gap wrap"><button class="btn small ghost" data-action="screen-report">Έλεγχος οθόνης</button></div>' : ''}
       </div>
       <div class="card danger-zone"><h3>Από την αρχή</h3><p class="muted small">Σβήνει όλες τις προπονήσεις, τα φαγητά και τις μετρήσεις.</p>
         <button class="btn small danger ghost" data-action="reset-all">${icon('trash')} Διαγραφή όλων</button></div>

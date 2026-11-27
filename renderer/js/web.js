@@ -78,6 +78,35 @@ async function keepAwake() {
 }
 document.addEventListener('visibilitychange', () => keepAwake());
 
+// ---------- έλεγχος οθόνης (για να βρίσκουμε προβλήματα σε κάθε κινητό) ----------
+function screenReport() {
+  const probe = css => { const d = document.createElement('div'); d.style.cssText = 'position:fixed;left:-9999px;top:0;width:1px;' + css; document.body.appendChild(d); const h = d.getBoundingClientRect().height; d.remove(); return Math.round(h); };
+  const r = sel => { const e = $(sel); if (!e) return '–'; const b = e.getBoundingClientRect(); return `${Math.round(b.top)}→${Math.round(b.bottom)}`; };
+  const vv = window.visualViewport;
+  const rows = [
+    ['Οθόνη (screen)', `${screen.width} × ${screen.height}`],
+    ['Ορατό (inner)', `${innerWidth} × ${innerHeight}`],
+    ['clientHeight', document.documentElement.clientHeight],
+    ['visualViewport', vv ? `${Math.round(vv.width)} × ${Math.round(vv.height)} (+${Math.round(vv.offsetTop)})` : '–'],
+    ['100vh / dvh / lvh / svh', `${probe('height:100vh')} / ${probe('height:100dvh')} / ${probe('height:100lvh')} / ${probe('height:100svh')}`],
+    ['Ασφαλή περιθώρια π/κ', `${probe('height:env(safe-area-inset-top)')} / ${probe('height:env(safe-area-inset-bottom)')}`],
+    ['Αρχική οθόνη', `${isStandalone() ? 'ναι' : 'όχι'} (standalone ${navigator.standalone === true ? 'ναι' : 'όχι'})`],
+    ['Εφαρμογή (app)', r('.app')],
+    ['Μενού (side)', r('.side')],
+    ['Κλάσεις', document.documentElement.className || '–'],
+    ['Pixel ratio', devicePixelRatio],
+    ['Browser', navigator.userAgent.replace(/^Mozilla\/5\.0 /, '')]
+  ];
+  return rows;
+}
+function openScreenReport() {
+  const rows = screenReport();
+  const text = rows.map(([a, b]) => `${a}: ${b}`).join('\n');
+  openModal('Έλεγχος οθόνης', `<p class="muted small">Βγάλε screenshot αυτό το παράθυρο και στείλ' το, για να προσαρμοστεί η εφαρμογή στο κινητό σου.</p>
+    <div class="list">${rows.map(([a, b]) => `<div class="kv"><span>${esc(a)}</span><b style="text-align:right;word-break:break-word">${esc(b)}</b></div>`).join('')}</div>
+    <button class="btn ghost block" data-action="copy-report" data-text="${esc(text)}">Αντιγραφή</button>`);
+}
+
 // ---------- ήχος: το iPhone παίζει ήχο μόνο αν «ξεκλειδωθεί» με άγγιγμα ----------
 let audioCtx = null;
 function unlockAudio() {

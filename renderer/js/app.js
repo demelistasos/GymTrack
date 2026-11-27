@@ -111,6 +111,8 @@ const actions = {
   'backup-choose': async el => { const r = await window.gymtrack.backupChoose(el.dataset.k); backupInfo = r.status; render(); if (r.ok) toast(`${icon('check')} Το αντίγραφο έγινε`); else if (r.error) toast(esc(r.error), 'bad'); },
   'backup-now': async el => { const r = await window.gymtrack.backupNow(el.dataset.k); backupInfo = r.status; render(); toast(r.ok ? `${icon('check')} Το αντίγραφο έγινε` : esc(r.error), r.ok ? '' : 'bad'); },
   'backup-remove': async el => { backupInfo = await window.gymtrack.backupRemove(el.dataset.k); render(); },
+  'screen-report': () => openScreenReport(),
+  'copy-report': el => { try { navigator.clipboard.writeText(el.dataset.text).then(() => toast(`${icon('check')} Αντιγράφηκε`)); } catch { /* τίποτα */ } },
   'web-export': () => webExport(),
   'web-import': () => webImport(),
   'web-reload': () => { persist().then(() => location.reload()); },
