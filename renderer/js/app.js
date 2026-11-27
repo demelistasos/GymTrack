@@ -25,6 +25,11 @@ function renderNav() {
 function measureNav() {
   const s = $('.side'); if (!s) return;
   const mobile = getComputedStyle($('.app')).gridTemplateRows.split(' ').length > 1 && innerWidth <= 640;
+  // Σε κάποιες εκδόσεις του iPhone, η εφαρμογή από την αρχική οθόνη δεν φτάνει ως κάτω:
+  // το iPhone κρατάει μόνο του μια λωρίδα για τη γραμμή «αρχικής». Τότε τη βάφουμε στο χρώμα του μενού
+  // και δεν αφήνουμε δεύτερο κενό μέσα στο μενού.
+  const gap = mobile && typeof isStandalone === 'function' && isStandalone() && innerHeight > innerWidth ? screen.height - innerHeight : 0;
+  document.documentElement.classList.toggle('ios-gap', gap > 8 && gap < 120);
   document.documentElement.style.setProperty('--nav-h', mobile ? s.offsetHeight + 'px' : '0px');
 }
 window.addEventListener('resize', measureNav);

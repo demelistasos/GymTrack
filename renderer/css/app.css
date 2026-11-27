@@ -398,6 +398,8 @@ details[open] summary { margin-bottom: 12px; color: var(--text); }
   .picker .chips, .picker .seg:not(.small) { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; }
   .picker .chips::-webkit-scrollbar, .picker .seg::-webkit-scrollbar { display: none; }
   .picker .chip, .picker .seg:not(.small) button { flex: none; }
+  html.ios-gap, html.ios-gap body { background: var(--surface); }
+  html.ios-gap .side { padding-bottom: 4px; }
   .glasses { gap: 6px; } .glass { width: 30px; height: 40px; }
   .setup.soft { flex-direction: row; align-items: center; flex-wrap: wrap; }
   .setup.soft > div:nth-child(2) { flex-basis: calc(100% - 64px); }
