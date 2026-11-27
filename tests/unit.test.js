@@ -16,7 +16,7 @@ function loadCore() {
   ctx.window.addEventListener = () => {}; ctx.addEventListener = () => {};
   vm.createContext(ctx);
   const src = ['defaults.js', 'core.js'].map(f => fs.readFileSync(path.join(__dirname, '..', 'renderer', 'js', f), 'utf8').replace(/^'use strict';/, '')).join('\n');
-  vm.runInContext(src + '\n;this.__x = { freshData, normalize, targets, bmr, suggestion, setDB: d => { DB = d; }, dayTotals, addDays, weekStart, streakWeeks };', ctx, { filename: 'renderer' });
+  vm.runInContext(src + '\n;this.__x = { freshData, normalize, targets, bmr, suggestion, setDB: d => { DB = d; }, dayTotals, addDays, weekStart, streakWeeks, EXERCISES, TEMPLATES, itemDef };', ctx, { filename: 'renderer' });
   return ctx.__x;
 }
 
@@ -36,14 +36,26 @@ function loadCore() {
     assert.deepStrictEqual([C.targets().kcal, C.targets().p, C.targets().manual], [2200, 150, true]);
   });
   await t('normalize συμπληρώνει ό,τι λείπει και αντέχει χαλασμένα δεδομένα', () => {
-    for (const bad of [null, 5, 'x', { food: [], sessions: 'x', program: { exercises: [] } }]) {
+    for (const bad of [null, 5, 'x', { food: [], sessions: 'x', program: { exercises: [] }, workouts: 'x' }]) {
       const n = C.normalize(bad);
-      assert.ok(Array.isArray(n.sessions) && n.program.exercises.length >= 5 && typeof n.food === 'object' && !Array.isArray(n.food));
+      assert.ok(Array.isArray(n.sessions) && Array.isArray(n.workouts) && typeof n.food === 'object' && !Array.isArray(n.food));
     }
+    assert.ok(C.normalize(null).workouts[0].items.length === 7, 'νέος χρήστης: έτοιμη η «Όλο το σώμα»');
+  });
+  await t('μεταφορά από την παλιά έκδοση (ένα πρόγραμμα) σε προπονήσεις', () => {
+    const n = C.normalize({ program: { days: [2, 4], rest: 120, exercises: [{ id: 'squat', name: 'x', kind: 'weight', sets: 4, reps: 8 }, { id: 'xmine', name: 'Δική μου', kind: 'weight', sets: 3, reps: 12, tip: 't' }] } });
+    assert.strictEqual(n.workouts.length, 1); assert.strictEqual(JSON.stringify(n.workouts[0].days), '[2,4]');
+    assert.strictEqual(JSON.stringify(n.workouts[0].items), JSON.stringify([{ id: 'squat', sets: 4, reps: 8 }, { id: 'xmine', sets: 3, reps: 12 }]));
+    assert.strictEqual(n.customExercises[0].name, 'Δική μου'); assert.strictEqual(n.program.rest, 120);
+  });
+  await t('50 ασκήσεις χωρίς διπλές, έτοιμες προπονήσεις με υπαρκτές ασκήσεις', () => {
+    assert.strictEqual(C.EXERCISES.length, 50); assert.strictEqual(new Set(C.EXERCISES.map(e => e.id)).size, 50);
+    for (const t of C.TEMPLATES) for (const id of t.items) assert.ok(C.EXERCISES.some(e => e.id === id), t.id + ': ' + id);
+    for (const id of ['warmup', 'squat', 'chest', 'row', 'shoulder', 'pulldown', 'plank']) assert.ok(C.EXERCISES.some(e => e.id === id), 'παλιό id ' + id);
   });
   await t('πρόταση βάρους: ανεβαίνει μόνο όταν βγήκαν όλα τα σετ', () => {
     const d = C.freshData(); C.setDB(d);
-    const ex = d.program.exercises.find(e => e.id === 'squat');
+    const ex = C.itemDef({ id: 'squat', sets: 3, reps: 10 });
     d.sessions.push({ id: 'a', date: '2026-01-01', start: 1, end: 2, ex: [{ id: 'squat', kind: 'weight', sets: [1, 2, 3].map(() => ({ kg: 30, reps: 10, done: true })) }] });
     assert.strictEqual(C.suggestion(ex).up, true); assert.strictEqual(C.suggestion(ex).kg, 32.5);
     d.sessions.push({ id: 'b', date: '2026-01-03', start: 3, end: 4, ex: [{ id: 'squat', kind: 'weight', sets: [{ kg: 32.5, reps: 10, done: true }, { kg: 32.5, reps: 8, done: true }, { kg: 32.5, reps: 7, done: true }] }] });

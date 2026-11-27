@@ -7,7 +7,9 @@ function pageProgress() {
   const body = [...DB.body].sort((a, b) => a.date.localeCompare(b.date));
   const wts = body.filter(b => b.weight).map(b => ({ x: b.date, y: b.weight }));
   const waist = body.filter(b => b.waist).map(b => ({ x: b.date, y: b.waist }));
-  const weighted = DB.program.exercises.filter(e => e.kind === 'weight');
+  // ασκήσεις με κιλά που υπάρχουν σε προπονήσεις ή έχουν γίνει
+  const ids = new Set([...DB.workouts.flatMap(w => w.items.map(i => i.id)), ...DB.sessions.flatMap(s => s.ex.filter(e => doneSets(e).length).map(e => e.id))]);
+  const weighted = [...ids].map(id => exById(id)).filter(e => e && e.kind === 'weight');
   if (!progEx || !weighted.find(e => e.id === progEx)) progEx = weighted[0] ? weighted[0].id : null;
   const strength = [];
   for (const s of [...DB.sessions].sort((a, b) => a.date.localeCompare(b.date))) {
@@ -26,8 +28,8 @@ function pageProgress() {
         <select data-field="prog-ex" aria-label="Άσκηση">${weighted.map(e => `<option value="${e.id}" ${e.id === progEx ? 'selected' : ''}>${esc(e.name.split(' (')[0])}</option>`).join('')}</select></div>
         ${lineChart(strength, { unit: 'kg', color: 'var(--kcal)' })}<p class="muted small">Τα περισσότερα κιλά που σήκωσες σε κάθε προπόνηση.</p></div>
       <div class="card"><div class="card-head"><h3>Συνέπεια</h3><span class="muted small">προπονήσεις / εβδομάδα</span></div>
-        ${barChart(weeks.map(w => ({ v: weekSessions(w).length, label: shortDate(w), title: `Εβδομάδα από ${shortDate(w)}` })), { goal: DB.program.days.length })}
-        <p class="muted small">Στόχος: ${DB.program.days.length} τη βδομάδα. Η συνέπεια μετράει περισσότερο από όλα.</p></div>
+        ${barChart(weeks.map(w => ({ v: weekSessions(w).length, label: shortDate(w), title: `Εβδομάδα από ${shortDate(w)}` })), { goal: weekGoal() })}
+        <p class="muted small">Στόχος: ${weekGoal()} τη βδομάδα. Η συνέπεια μετράει περισσότερο από όλα.</p></div>
     </div>
     <div class="card"><div class="card-head"><h3>Μετρήσεις</h3></div>
       ${body.length ? `<table class="tbl"><thead><tr><th>Ημερομηνία</th><th>Κιλά</th><th>Μέση</th><th></th></tr></thead><tbody>

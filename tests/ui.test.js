@@ -61,13 +61,41 @@ async function shot(page, name) { if (SHOTS) await page.screenshot({ path: path.
     }
     // --- προπόνηση: ξεκίνημα, κιλά, σετ, ξεκούραση, τέλος ---
     await page.click('#nav button[data-page="workout"]'); await wait(page);
-    await page.click('.tabs .tab[data-k="program"]'); await wait(page);
-    check(await page.$$eval('.ex-card', e => e.length) === 7, `${tag}: το πρόγραμμα έχει 7 ασκήσεις`);
-    check(await page.$('.hint.up') !== null, `${tag}: προτείνει ανέβασμα βάρους`);
-    await page.click('[data-action="tip-toggle"] >> nth=1'); await wait(page);
+    await page.click('.tabs .tab[data-k="plans"]'); await wait(page);
+    check(await page.$$eval('.plan-card', e => e.length) === 1, `${tag}: υπάρχει η προπόνηση «Όλο το σώμα»`);
+    // βιβλιοθήκη: 50 ασκήσεις, αναζήτηση, οδηγίες
+    await page.click('.tabs .tab[data-k="library"]'); await wait(page);
+    check(await page.$$eval('.lib-row', e => e.length) === 50, `${tag}: η βιβλιοθήκη έχει 50 ασκήσεις`);
+    await page.fill('[data-field="lib-q"]', 'δικέφαλα'); await wait(page);
+    check(await page.$$eval('.lib-row', e => e.length) === 3, `${tag}: η αναζήτηση βρίσκει τα δικέφαλα`);
+    await page.click('[data-action="tip-toggle"] >> nth=0'); await wait(page);
     check(await page.$('.tip') !== null, `${tag}: δείχνει πώς γίνεται η άσκηση`);
-    await page.click('.page-head [data-action="workout-start"]'); await wait(page, 80);
+    check(await overflow(page) <= 2, `${tag}: η βιβλιοθήκη χωράει στο πλάτος`);
+    await page.fill('[data-field="lib-q"]', ''); await wait(page);
+    // νέα προπόνηση από έτοιμη (Upper), με μέρες, και αλλαγές
+    await page.click('.tabs .tab[data-k="plans"]'); await wait(page);
+    await page.click('.page-head [data-action="workout-new"]'); await wait(page);
+    await shot(page, `${s}-6-templates`);
+    await page.click('[data-action="w-tpl"][data-t="upper"]'); await wait(page);
+    await page.fill('[data-field="w-name"]', 'Upper A');
+    await page.click('[data-action="w-day"][data-d="2"]'); await page.click('[data-action="w-day"][data-d="4"]');
+    await page.click('[data-action="w-num"][data-i="1"][data-f="sets"][data-n="1"]'); await wait(page);
+    await page.click('[data-action="w-remove"][data-i="7"]'); await wait(page);
+    await page.click('[data-action="w-add-ex"]'); await wait(page);
+    await page.fill('[data-field="ex-q"]', 'face'); await wait(page);
+    await page.click('[data-action="pick-ex"][data-id="facepull"]'); await wait(page);
+    check(await page.$('[data-action="pick-ex"][data-id="facepull"].chosen') !== null, `${tag}: διαλέγει άσκηση από τη λίστα`);
+    await shot(page, `${s}-7-pick`);
+    await page.click('[data-action="w-pick-done"]'); await wait(page);
+    await shot(page, `${s}-8-editor`);
+    check(await overflow(page) <= 2, `${tag}: το φτιάξιμο προπόνησης χωράει`);
+    await page.click('[data-action="w-save"]'); await wait(page);
+    check(await page.evaluate(() => { const w = DB.workouts.find(x => x.name === 'Upper A'); return w && w.days.join() === '2,4' && w.items.length === 8 && w.items[1].sets === 4 && w.items[7].id === 'facepull' && !w.items.some(i => i.id === 'pushdown'); }), `${tag}: αποθηκεύτηκε η προπόνηση Upper A`);
+    check(await page.$$eval('.plan-card', e => e.length) === 2, `${tag}: φαίνονται δύο προπονήσεις`);
+    // έναρξη της «Όλο το σώμα»
+    await page.click('.plan-card >> nth=0 >> [data-action="workout-start"]'); await wait(page, 80);
     check(await page.$('#elapsed') !== null, `${tag}: ξεκίνησε η προπόνηση`);
+    check(await page.$('.hint.up') !== null, `${tag}: προτείνει ανέβασμα βάρους`);
     const kg = page.locator('input[data-set="kg"]').first();
     await kg.fill('60,5'); await wait(page);
     await page.click('[data-action="set-done"] >> nth=1'); await wait(page, 1200);
@@ -78,9 +106,13 @@ async function shot(page, name) { if (SHOTS) await page.screenshot({ path: path.
     await page.click('[data-action="rest-skip"]'); await wait(page);
     await page.click('[data-action="set-add"] >> nth=1'); await wait(page);
     check(await page.evaluate(() => DB.active.ex[1].sets.length === 4), `${tag}: προσθέτει σετ`);
+    await page.click('[data-action="session-add-ex"]'); await wait(page);
+    await page.fill('[data-field="ex-q"]', 'γάμπες'); await wait(page);
+    await page.click('[data-action="pick-ex"][data-id="calf"]'); await wait(page);
+    check(await page.evaluate(() => DB.active.ex[DB.active.ex.length - 1].id === 'calf'), `${tag}: προσθέτει άσκηση μέσα στην προπόνηση`);
     await page.click('[data-action="workout-finish"]'); await wait(page, 80);
     check(await page.$eval('#modal', m => m.classList.contains('open') && /ολοκληρώθηκε/.test(m.innerText)), `${tag}: σύνοψη στο τέλος`);
-    check(await page.evaluate(() => DB.active === null && DB.sessions[DB.sessions.length - 1].ex[1].sets[0].kg === 60.5), `${tag}: η προπόνηση αποθηκεύτηκε`);
+    check(await page.evaluate(() => DB.active === null && DB.sessions[DB.sessions.length - 1].ex[1].sets[0].kg === 60.5 && DB.sessions[DB.sessions.length - 1].name === 'Όλο το σώμα'), `${tag}: η προπόνηση αποθηκεύτηκε`);
     check(await page.$eval('#modal', m => /ρεκόρ/i.test(m.innerText)), `${tag}: δείχνει νέο ρεκόρ`);
     await shot(page, `${s}-3-finish`);
     await page.click('#modal [data-action="modal-close"] >> nth=-1'); await wait(page);
@@ -156,7 +188,7 @@ async function shot(page, name) { if (SHOTS) await page.screenshot({ path: path.
     await page.click('form[data-form="profile"] button.primary'); await wait(page);
     check(await page.$('.setup:not(.soft)') === null && await page.evaluate(() => targets().kcal === 2440), `${tag}: μετά το προφίλ βγαίνουν οι στόχοι`);
     await page.click('#nav button[data-page="workout"]'); await wait(page);
-    await page.click('[data-action="workout-start"]'); await wait(page);
+    await page.click('.plan-card [data-action="workout-start"]'); await wait(page);
     await page.click('[data-action="workout-finish"]'); await wait(page);
     check(await page.$eval('#modal', m => /Κανένα σετ/.test(m.innerText)), `${tag}: προειδοποιεί όταν δεν έγινε κανένα σετ`);
     await page.click('[data-action="confirm-ok"]'); await wait(page);

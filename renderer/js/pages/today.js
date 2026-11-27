@@ -10,7 +10,7 @@ function greeting() {
 function pageToday() {
   const k = today();
   const t = targets(), tot = dayTotals(k);
-  const ws = weekSessions(k), goalW = DB.program.days.length;
+  const ws = weekSessions(k), goalW = weekGoal();
   const trainedToday = DB.sessions.some(s => s.date === k);
   const water = DB.water[k] || 0, wg = DB.settings.waterGoal || 8;
   const w = latestBody();
@@ -33,18 +33,20 @@ function pageToday() {
       <p class="muted">${Math.round((s.end - s.start) / 60000)} λεπτά · ${s.ex.reduce((n, e) => n + doneSets(e).length, 0)} σετ · ${fmt(sessionVolume(s))} kg συνολικά</p>
       <button class="btn ghost" data-action="session-open" data-id="${s.id}">Δες τι έκανες</button></div>`;
   } else if (isTrainingDay(k)) {
+    const todays = workoutsFor(k), w = todays[0], items = w.items.map(itemDef);
     workoutCard = `<div class="card hero">
-      <div class="hero-top"><span class="pill accent">${icon('workout')} Μέρα προπόνησης</span><span class="muted">${DB.program.exercises.length} ασκήσεις · ~50′</span></div>
-      <h2>Όλο το σώμα</h2>
-      <p class="muted">${DB.program.exercises.filter(e => e.kind !== 'cardio').map(e => esc(e.name.split(' (')[0])).join(' · ')}</p>
-      <button class="btn primary lg" data-action="workout-start">${icon('play')} Ξεκίνα προπόνηση</button></div>`;
+      <div class="hero-top"><span class="pill accent">${icon('workout')} Μέρα προπόνησης</span><span class="muted">${items.length} ασκήσεις</span></div>
+      <h2>${esc(w.name)}</h2>
+      <p class="muted">${items.filter(e => e.kind !== 'cardio').map(e => esc(shortName(e.name))).join(' · ')}</p>
+      <div class="row gap wrap"><button class="btn primary lg" data-action="workout-start" data-id="${w.id}">${icon('play')} Ξεκίνα προπόνηση</button>
+      ${todays.length > 1 || DB.workouts.length > 1 ? '<button class="btn ghost" data-action="workout-choose">Άλλη προπόνηση</button>' : ''}</div></div>`;
   } else {
     const next = [1, 2, 3, 4, 5, 6, 7].map(n => addDays(k, n)).find(isTrainingDay);
     workoutCard = `<div class="card hero restday">
       <div class="hero-top"><span class="pill">Ξεκούραση</span></div>
       <h2>Σήμερα ξεκουράζεσαι</h2>
       <p class="muted">${next ? `Επόμενη προπόνηση: <b>${DAYS[parseKey(next).getDay()]}</b>. ` : ''}Ένα περπάτημα 30 λεπτών μετράει κι αυτό.</p>
-      <button class="btn ghost" data-action="workout-start">${icon('play')} Θέλω να γυμναστώ πάντως</button></div>`;
+      <button class="btn ghost" data-action="workout-start" data-id="">${icon('play')} Θέλω να γυμναστώ πάντως</button></div>`;
   }
 
   const setup = !t.ready ? `<div class="card setup">
@@ -72,7 +74,7 @@ function pageToday() {
     <div class="card-head"><h3>Η εβδομάδα σου</h3><span class="muted">${ws.length}/${goalW} προπονήσεις</span></div>
     <div class="weekdays">${[0, 1, 2, 3, 4, 5, 6].map(i => {
       const d = addDays(ws0, i), dd = parseKey(d).getDay();
-      const trained = DB.sessions.some(s => s.date === d), planned = DB.program.days.includes(dd);
+      const trained = DB.sessions.some(s => s.date === d), planned = workoutsFor(d).length > 0;
       return `<div class="wd ${trained ? 'trained' : ''} ${planned ? 'planned' : ''} ${d === k ? 'now' : ''}"><span>${DAYS_SHORT[dd]}</span><i>${trained ? icon('check') : parseKey(d).getDate()}</i></div>`;
     }).join('')}</div>
     <div class="mini-stats">

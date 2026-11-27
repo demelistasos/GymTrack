@@ -31,7 +31,9 @@ function freshData() {
   return {
     version: VERSION,
     profile: { name: '', sex: 'm', age: 25, height: null, activity: 1.55, goal: 'cut', manual: null },
-    program: { days: [1, 3, 5], rest: 90, exercises: DEFAULT_EXERCISES.map(e => ({ ...e })) },
+    program: { rest: 90 },
+    workouts: [workoutFromTemplate('full', [1, 3, 5])],   // οι προπονήσεις μου (τίτλος, μέρες, ασκήσεις)
+    customExercises: [],   // δικές μου ασκήσεις, εκτός από τις 50 έτοιμες
     sessions: [],          // ολοκληρωμένες προπονήσεις
     active: null,          // προπόνηση σε εξέλιξη
     food: {},              // { 'YYYY-MM-DD': [ {id,name,kcal,p,meal,qty} ] }
@@ -48,9 +50,28 @@ function normalize(d) {
   if (!d || typeof d !== 'object') return f;
   const out = { ...f, ...d };
   out.profile = { ...f.profile, ...(d.profile || {}) };
-  out.program = { ...f.program, ...(d.program || {}) };
-  if (!Array.isArray(out.program.exercises) || !out.program.exercises.length) out.program.exercises = f.program.exercises;
-  if (!Array.isArray(out.program.days)) out.program.days = f.program.days;
+  out.program = { rest: (d.program && +d.program.rest) || 90 };
+  if (!Array.isArray(out.customExercises)) out.customExercises = [];
+  // Παλιά έκδοση: ένα μόνο πρόγραμμα. Γίνεται η προπόνηση «Όλο το σώμα», και ό,τι άσκηση
+  // είχε προστεθεί με το χέρι μπαίνει στις «δικές μου».
+  if (!Array.isArray(d.workouts)) {
+    const old = d.program && Array.isArray(d.program.exercises) && d.program.exercises.length ? d.program.exercises : null;
+    if (old) {
+      const items = [];
+      for (const e of old) {
+        if (!e || !e.id) continue;
+        if (!EXERCISES.some(x => x.id === e.id) && !out.customExercises.some(x => x.id === e.id))
+          out.customExercises.push({ id: e.id, group: 'Άλλο', name: String(e.name || 'Άσκηση'), kind: e.kind || 'weight', sets: +e.sets || 3, reps: +e.reps || 10, tip: e.tip || '' });
+        items.push({ id: e.id, sets: +e.sets || 3, reps: +e.reps || 10 });
+      }
+      out.workouts = [{ id: 'w' + uid(), name: 'Όλο το σώμα', days: Array.isArray(d.program.days) ? d.program.days : [1, 3, 5], items }];
+    } else out.workouts = f.workouts;
+  }
+  out.workouts = out.workouts.filter(w => w && typeof w === 'object').map(w => ({
+    id: w.id || 'w' + uid(), name: String(w.name || 'Προπόνηση'),
+    days: Array.isArray(w.days) ? w.days.filter(x => x >= 0 && x <= 6) : [],
+    items: Array.isArray(w.items) ? w.items.filter(i => i && i.id).map(i => ({ id: i.id, sets: Math.max(1, +i.sets || 3), reps: Math.max(1, +i.reps || 10) })) : []
+  }));
   out.settings = { ...f.settings, ...(d.settings || {}) };
   for (const k of ['sessions', 'myFoods', 'body', 'shop']) if (!Array.isArray(out[k])) out[k] = f[k];
   for (const k of ['food', 'water']) if (!out[k] || typeof out[k] !== 'object' || Array.isArray(out[k])) out[k] = {};
@@ -121,7 +142,23 @@ function dayTotals(k) {
 }
 
 // ---------- υπολογισμοί προπόνησης ----------
-const exById = id => DB.program.exercises.find(e => e.id === id);
+// ---------- ασκήσεις και προπονήσεις ----------
+const allExercises = () => [...EXERCISES, ...((DB && DB.customExercises) || [])];
+const exById = id => allExercises().find(e => e.id === id) || null;
+// μια άσκηση μέσα σε προπόνηση: ο ορισμός της + τα σετ/επαναλήψεις αυτής της προπόνησης
+function itemDef(it) {
+  const e = exById(it.id) || { id: it.id, name: it.id, kind: 'weight', group: 'Άλλο' };
+  return { ...e, sets: it.sets || e.sets, reps: it.reps || e.reps };
+}
+function workoutFromTemplate(tid, days = []) {
+  const t = TEMPLATES.find(x => x.id === tid);
+  return { id: 'w' + uid(), name: t ? t.name : 'Νέα προπόνηση', days, items: t ? t.items.map(id => { const e = EXERCISES.find(x => x.id === id); return { id, sets: e.sets, reps: e.reps }; }) : [] };
+}
+const workoutById = id => DB.workouts.find(w => w.id === id) || null;
+// προπονήσεις προγραμματισμένες για μια μέρα
+const workoutsFor = (k = today()) => DB.workouts.filter(w => w.days.includes(parseKey(k).getDay()));
+// πόσες προπονήσεις την εβδομάδα (οι διαφορετικές μέρες του προγράμματος)
+const weekGoal = () => Math.max(1, new Set(DB.workouts.flatMap(w => w.days)).size);
 const doneSets = ex => (ex.sets || []).filter(s => s.done);
 function sessionVolume(s) {
   let v = 0;
@@ -152,10 +189,10 @@ function suggestion(ex) {
 function weekSessions(k = today()) { const s = weekStart(k), e = addDays(s, 6); return DB.sessions.filter(x => x.date >= s && x.date <= e); }
 function streakWeeks() {
   // συνεχόμενες εβδομάδες (μέχρι την προηγούμενη) με τουλάχιστον όσες προπονήσεις έχει το πρόγραμμα
-  const goal = Math.max(1, DB.program.days.length);
+  const goal = weekGoal();
   let n = 0, k = addDays(weekStart(today()), -7);
   while (weekSessions(k).length >= goal) { n++; k = addDays(k, -7); }
   if (weekSessions().length >= goal) n++;
   return n;
 }
-const isTrainingDay = (k = today()) => DB.program.days.includes(parseKey(k).getDay());
+const isTrainingDay = (k = today()) => workoutsFor(k).length > 0;

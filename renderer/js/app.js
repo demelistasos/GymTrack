@@ -44,6 +44,9 @@ function render() {
   measureNav();
 }
 
+// μετά από ξανασχεδίασμα, το πεδίο αναζήτησης μένει ενεργό με τον κέρσορα στο τέλος
+function keepFocus(field) { const i = $(`[data-field="${field}"]`); if (i) { i.focus(); i.setSelectionRange(i.value.length, i.value.length); } }
+
 // ---------- κουμπιά ----------
 const actions = {
   go: el => go(el.dataset.page),
@@ -57,7 +60,7 @@ const actions = {
   'water-step': el => { const k = el.dataset.date; DB.water[k] = Math.max(0, (DB.water[k] || 0) + +el.dataset.n); save(); render(); },
   // προπόνηση
   'workout-tab': el => { workoutTab = el.dataset.k; render(); },
-  'workout-start': () => startWorkout(),
+  'workout-start': el => startWorkout(el.dataset.id),
   'workout-finish': () => finishWorkout(),
   'workout-cancel': () => confirmBox('Ακύρωση προπόνησης', 'Θα χαθούν τα σετ που έγραψες σε αυτή την προπόνηση.', 'Ακύρωση προπόνησης', () => { DB.active = null; restEnd = null; save(); render(); }),
   'set-done': el => setDone(+el.dataset.ei, +el.dataset.si),
@@ -66,10 +69,26 @@ const actions = {
   'rest-skip': () => { restEnd = null; tick(); },
   'rest-add': () => { if (restEnd) { restEnd += 15000; restTotal += 15; tick(); } },
   'tip-toggle': el => { const id = el.dataset.id; openTips.has(id) ? openTips.delete(id) : openTips.add(id); render(); },
-  'day-toggle': el => { const d = +el.dataset.d, days = DB.program.days; DB.program.days = days.includes(d) ? days.filter(x => x !== d) : [...days, d].sort(); save(); render(); },
+  // φτιάξιμο / αλλαγή προπόνησης
+  'workout-new': () => openWorkoutEditor(null),
+  'workout-choose': () => chooseWorkout(),
+  'workout-edit': el => openWorkoutEditor(el.dataset.id),
+  'w-tpl': el => { const t = el.dataset.t; const base = t ? workoutFromTemplate(t) : { name: '', items: [] }; wEdit = { ...wEdit, name: base.name, items: base.items, choosing: false }; renderEditor(); const i = $('[data-field="w-name"]'); if (i && !t) i.focus(); },
+  'w-day': el => { const d = +el.dataset.d; wEdit.days = wEdit.days.includes(d) ? wEdit.days.filter(x => x !== d) : [...wEdit.days, d]; renderEditor(); },
+  'w-num': el => { const it = wEdit.items[+el.dataset.i], f = el.dataset.f, k = exById(it.id) || {}; const step = f === 'reps' && (k.kind === 'time') ? 5 : 1; it[f] = Math.min(f === 'sets' ? 10 : 300, Math.max(1, it[f] + step * +el.dataset.n)); renderEditor(); },
+  'w-up': el => { const i = +el.dataset.i, a = wEdit.items; if (i > 0) { [a[i - 1], a[i]] = [a[i], a[i - 1]]; renderEditor(); } },
+  'w-remove': el => { wEdit.items.splice(+el.dataset.i, 1); renderEditor(); },
+  'w-add-ex': () => { exPick = { mode: 'editor', group: '', q: '' }; renderEditor(); },
+  'w-pick-done': () => { exPick = null; renderEditor(); },
+  'w-save': () => saveWorkout(),
+  'w-delete': () => { const w = wEdit; closeModal(); confirmBox('Διαγραφή προπόνησης', `Να σβηστεί η προπόνηση «${esc(w.name)}»; Οι προπονήσεις που έχεις ήδη κάνει μένουν στο ιστορικό.`, 'Διαγραφή', () => { DB.workouts = DB.workouts.filter(x => x.id !== w.id); save(); render(); }); },
+  'ex-group': el => { exPick.group = el.dataset.g; renderPickerOnly(); },
+  'pick-ex': el => pickExercise(el.dataset.id),
+  'lib-group': el => { libGroup = el.dataset.g; render(); },
+  'session-add-ex': () => { exPick = { mode: 'session', group: '', q: '' }; renderPickerOnly(); },
+  'session-remove-ex': el => { DB.active.ex.splice(+el.dataset.ei, 1); save(); render(); },
   'ex-edit': el => editExercise(el.dataset.id),
-  'ex-move': el => { const i = +el.dataset.i, a = DB.program.exercises; if (i > 0) { [a[i - 1], a[i]] = [a[i], a[i - 1]]; save(); render(); } },
-  'ex-delete': el => { const id = el.dataset.id; closeModal(); confirmBox('Διαγραφή άσκησης', 'Η άσκηση φεύγει από το πρόγραμμα. Οι παλιές προπονήσεις μένουν στο ιστορικό.', 'Διαγραφή', () => { DB.program.exercises = DB.program.exercises.filter(e => e.id !== id); save(); render(); }); },
+  'ex-delete': el => { const id = el.dataset.id; closeModal(); confirmBox('Διαγραφή άσκησης', 'Η άσκηση σβήνεται και φεύγει από όποια προπόνηση την έχει. Οι προπονήσεις που έχεις ήδη κάνει μένουν στο ιστορικό.', 'Διαγραφή', () => { DB.customExercises = DB.customExercises.filter(e => e.id !== id); DB.workouts.forEach(w => { w.items = w.items.filter(i => i.id !== id); }); save(); render(); }); },
   'session-open': el => sessionDetail(el.dataset.id),
   'session-delete': el => { const id = el.dataset.id; closeModal(); confirmBox('Διαγραφή προπόνησης', 'Να σβηστεί αυτή η προπόνηση από το ιστορικό;', 'Διαγραφή', () => { DB.sessions = DB.sessions.filter(s => s.id !== id); save(); render(); }); },
   // διατροφή
@@ -147,6 +166,9 @@ document.addEventListener('input', e => {
     if (el.dataset.set === 'kg') s.edited = true;
     save();
   } else if (el.dataset.field === 'pick-q') { pick.q = el.value; renderPicker(); }
+  else if (el.dataset.field === 'w-name' && wEdit) wEdit.name = el.value;
+  else if (el.dataset.field === 'ex-q' && exPick) { exPick.q = el.value; renderPickerOnly(); keepFocus('ex-q'); }
+  else if (el.dataset.field === 'lib-q') { libQ = el.value; render(); keepFocus('lib-q'); }
   else if (el.closest('form[data-form="profile"]')) previewTargets(el.closest('form'));
 });
 document.addEventListener('change', e => {
